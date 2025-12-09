@@ -11,33 +11,11 @@ jobs:
     strategy:
       matrix:
         include:
-          # AMD64 - Standard
-          - os: ubuntu-latest
-            platform: linux/amd64
-            name: "AMD64"
-            dockerfile: "docker/Dockerfile"
-            tag_suffix: ""
-            api_only: "0"
-          # AMD64 - API Only
           - os: ubuntu-latest
             platform: linux/amd64
             name: "AMD64 API-Only"
             dockerfile: "docker/Dockerfile"
             tag_suffix: "-api-only"
-            api_only: "1"
-          # ARM64 - Standard
-          - os: ubuntu-24.04-arm
-            platform: linux/arm64/v8
-            name: "ARM64"
-            dockerfile: "docker/Dockerfile.arm64"
-            tag_suffix: "-arm64"
-            api_only: "0"
-          # ARM64 - API Only
-          - os: ubuntu-24.04-arm
-            platform: linux/arm64/v8
-            name: "ARM64 API-Only"
-            dockerfile: "docker/Dockerfile.arm64"
-            tag_suffix: "-arm64-api-only"
             api_only: "1"
 
     runs-on: ${{ matrix.os }}
