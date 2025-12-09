@@ -11,17 +11,34 @@ jobs:
     strategy:
       matrix:
         include:
+          # AMD64 - Standard
           - os: ubuntu-latest
             platform: linux/amd64
             name: "AMD64"
             dockerfile: "docker/Dockerfile"
             tag_suffix: ""
-            # GitHub doesn't have a ubuntu-latest-arm runner
+            api_only: "0"
+          # AMD64 - API Only
+          - os: ubuntu-latest
+            platform: linux/amd64
+            name: "AMD64 API-Only"
+            dockerfile: "docker/Dockerfile"
+            tag_suffix: "-api-only"
+            api_only: "1"
+          # ARM64 - Standard
           - os: ubuntu-24.04-arm
             platform: linux/arm64/v8
             name: "ARM64"
             dockerfile: "docker/Dockerfile.arm64"
             tag_suffix: "-arm64"
+            api_only: "0"
+          # ARM64 - API Only
+          - os: ubuntu-24.04-arm
+            platform: linux/arm64/v8
+            name: "ARM64 API-Only"
+            dockerfile: "docker/Dockerfile.arm64"
+            tag_suffix: "-arm64-api-only"
+            api_only: "1"
 
     runs-on: ${{ matrix.os }}
 
@@ -35,15 +52,15 @@ jobs:
       - name: Login to registry
         uses: docker/login-action@v3
         with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: quay.io/invidious/invidious
+          images: ghcr.io/${{ github.repository }}
           flavor: |
             latest=false
             suffix=${{ matrix.tag_suffix }}
@@ -64,3 +81,4 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           build-args: |
             "release=1"
+            "api_only=${{ matrix.api_only }}"
