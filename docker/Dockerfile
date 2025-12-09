@@ -9,6 +9,17 @@ WORKDIR /invidious
 COPY ./shard.yml ./shard.yml
 COPY ./shard.lock ./shard.lock
 RUN shards install --production
+FROM crystallang/crystal:1.16.3-alpine AS builder
+
+RUN apk add --no-cache sqlite-static yaml-static
+
+ARG release
+ARG api_only
+
+WORKDIR /invidious
+COPY ./shard.yml ./shard.yml
+COPY ./shard.lock ./shard.lock
+RUN shards install --production
 
 COPY ./src/ ./src/
 # TODO: .git folder is required for building – this is destructive.
@@ -23,14 +34,14 @@ COPY ./videojs-dependencies.yml ./videojs-dependencies.yml
 RUN crystal spec --warnings all \
     --link-flags "-lxml2 -llzma"    
 RUN --mount=type=cache,target=/root/.cache/crystal \
-    BUILD_FLAGS="--static --warnings all --link-flags '-lxml2 -llzma'"; \
+    BUILD_FLAGS="--static --warnings all"; \
     if [[ "${release}" == 1 ]] ; then \
         BUILD_FLAGS="--release ${BUILD_FLAGS}"; \
     fi; \
     if [[ "${api_only}" == 1 ]] ; then \
         BUILD_FLAGS="-Dapi_only ${BUILD_FLAGS}"; \
     fi; \
-    crystal build ./src/invidious.cr ${BUILD_FLAGS}
+    crystal build ./src/invidious.cr ${BUILD_FLAGS} --link-flags "-lxml2 -llzma"
 
 FROM alpine:3.21
 RUN apk add --no-cache rsvg-convert ttf-opensans tini tzdata
@@ -40,6 +51,17 @@ RUN addgroup -g 1000 -S invidious && \
 COPY --chown=invidious ./config/config.* ./config/
 RUN mv -n config/config.example.yml config/config.yml
 RUN sed -i 's/host: \(127.0.0.1\|localhost\)/host: invidious-db/' config/config.yml
+COPY ./config/sql/ ./config/sql/
+COPY ./locales/ ./locales/
+COPY --from=builder /invidious/assets ./assets/
+COPY --from=builder /invidious/invidious .
+RUN chmod o+rX -R ./assets ./config ./locales
+
+EXPOSE 3000
+USER invidious
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD [ "/invidious/invidious" ]
+|localhost\)/host: invidious-db/' config/config.yml
 COPY ./config/sql/ ./config/sql/
 COPY ./locales/ ./locales/
 COPY --from=builder /invidious/assets ./assets/
